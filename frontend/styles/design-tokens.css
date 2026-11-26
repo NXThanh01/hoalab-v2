@@ -1,0 +1,45 @@
+:root {
+  /* Brand */
+  --brand-50: #e9f0ff;
+  --brand-100: #dce8ff;
+  --brand-300: #78a4ff;
+  --brand-500: #2f6ee5;
+  --brand-600: #255fc4;
+  --brand-700: #1648a5;
+
+  /* Semantic color */
+  --success-50: #ecfdf5;
+  --success-500: #10b981;
+  --warning-50: #fffbeb;
+  --warning-500: #f59e0b;
+  --danger-50: #fff1f2;
+  --danger-500: #f43f5e;
+
+  /* Surfaces */
+  --surface-app: #f5f6f8;
+  --surface-card: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-sidebar: #0f172a;
+
+  /* Typography */
+  --font-ui: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  --font-display: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  --font-chem: "Source Serif 4 Variable", "Cambria Math", "Times New Roman", serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --leading-tight: 1.24;
+  --leading-body: 1.6;
+
+  /* Shape, elevation, motion */
+  --radius-control: 0.75rem;
+  --radius-card: 1.375rem;
+  --radius-panel: 1.75rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 4%), 0 12px 30px rgb(15 23 42 / 5%);
+  --shadow-float: 0 24px 80px rgb(15 23 42 / 22%);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 160ms;
+  --duration-standard: 240ms;
+}
