@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, Beaker, Bot, Calculator, Check, Cloud, CloudOff, FlaskConical, GraduationCap, LoaderCircle, LogOut, Menu, Search, ShieldCheck, X } from "lucide-react";
 import { useLearning, type AppView } from "@/frontend/features/learning/model/LearningContext";
 import { useAuth } from "@/frontend/features/auth/model/AuthContext";
+import { GuideButton } from "@/frontend/features/onboarding/components/GuideButton";
 import { navigationItems } from "@/frontend/features/dashboard/data/dashboard.data";
 
 const searchItems: Array<{ label: string; detail: string; view: AppView; icon: typeof Search }> = [
@@ -14,7 +15,7 @@ const searchItems: Array<{ label: string; detail: string; view: AppView; icon: t
   { label: "Thí nghiệm ảo", detail: "Mô phỏng phản ứng", view: "lab", icon: FlaskConical },
 ];
 
-export function AppHeader() {
+export function AppHeader({ onOpenGuide }: { onOpenGuide: () => void }) {
   const { setView, syncState } = useLearning();
   const { user, isAdmin, loading, logout } = useAuth();
   const [query, setQuery] = useState("");
@@ -45,7 +46,7 @@ export function AppHeader() {
   const SyncIcon = syncState === "syncing" ? LoaderCircle : syncState === "synced" ? Check : syncState === "error" ? CloudOff : Cloud;
 
   return (
-    <header className="sticky top-0 z-30 flex h-[68px] items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-lg sm:px-6 lg:ml-[232px] lg:px-7">
+    <header className="sticky top-0 z-30 flex h-[68px] items-center gap-2 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-lg sm:gap-4 sm:px-6 lg:ml-[232px] lg:px-7">
       <button
         className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white lg:hidden"
         aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu"}
@@ -77,7 +78,7 @@ export function AppHeader() {
         {searchOpen && <div className="absolute left-0 right-0 top-[48px] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">{results.length ? results.map((item) => { const Icon = item.icon; return <button type="button" key={item.label} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(item.view)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50"><span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-50 text-blue-600"><Icon className="h-4 w-4" /></span><span><span className="block text-sm font-semibold text-slate-700">{item.label}</span><span className="block text-xs text-slate-400">{item.detail}</span></span></button>; }) : <p className="px-4 py-6 text-center text-sm text-slate-400">Không tìm thấy nội dung phù hợp.</p>}</div>}
       </label>
 
-      <div className="ml-auto flex items-center gap-3 sm:gap-4">
+      <div className="ml-auto flex items-center gap-1 sm:gap-4">
         {user && (
           <div className={`hidden items-center gap-1.5 text-xs font-semibold md:flex ${syncState === "error" ? "text-rose-600" : "text-emerald-700"}`} title="Trạng thái đồng bộ tiến trình">
             <SyncIcon className={`h-3.5 w-3.5 ${syncState === "syncing" ? "animate-spin" : ""}`} />
@@ -85,6 +86,7 @@ export function AppHeader() {
           </div>
         )}
         {isAdmin && <button type="button" aria-label="Mở Admin Studio" onClick={() => setView("admin")} className="hidden h-10 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:bg-blue-100 sm:flex"><ShieldCheck className="h-4 w-4" /> <span className="hidden xl:inline">Admin Studio</span></button>}
+        <GuideButton onClick={onOpenGuide} />
         <button className="relative grid h-10 w-10 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" aria-label="Thông báo">
           <Bell className="h-5 w-5" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-rose-500" />

@@ -3,6 +3,7 @@ import {
   BookOpenText,
   Bot,
   Calculator,
+  Gamepad2,
   Microscope,
   TestTube2,
 } from "lucide-react";
@@ -11,6 +12,7 @@ export const navigationItems = [
   { label: "Tổng quan", icon: Atom, view: "dashboard" },
   { label: "Kho tài liệu", icon: BookOpenText, view: "courses" },
   { label: "Luyện đề", icon: TestTube2, view: "practice" },
+  { label: "Game ôn tập", icon: Gamepad2, view: "games" },
   { label: "Phòng thí nghiệm", icon: Microscope, view: "lab" },
   { label: "Trợ lý Hóa", icon: Bot, view: "ai" },
   { label: "Công cụ", icon: Calculator, view: "tools" },

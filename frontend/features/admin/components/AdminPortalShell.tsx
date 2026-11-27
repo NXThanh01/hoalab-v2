@@ -2,10 +2,14 @@
 
 import { Beaker, Database, LogOut, ShieldCheck } from "lucide-react";
 import { AdminStudioView } from "./AdminStudioView";
+import { FirstVisitGuide } from "@/frontend/features/onboarding/components/FirstVisitGuide";
+import { GuideButton } from "@/frontend/features/onboarding/components/GuideButton";
+import { useFirstVisitGuide } from "@/frontend/features/onboarding/model/useFirstVisitGuide";
 import { useAuth } from "@/frontend/features/auth/model/AuthContext";
 
 export function AdminPortalShell({ onChangePassword }: { onChangePassword: () => void }) {
   const { user, logout, loading, logoutError } = useAuth();
+  const guide = useFirstVisitGuide(user?.userId, "admin");
 
   return (
     <div className="min-h-screen bg-[#f4f6fb]">
@@ -15,11 +19,13 @@ export function AdminPortalShell({ onChangePassword }: { onChangePassword: () =>
         <div className="hidden h-8 w-px bg-slate-200 sm:block" />
         <div className="hidden text-right sm:block"><p className="text-xs font-bold text-slate-800">{user?.displayName}</p><p className="text-[10px] text-slate-400">Quản trị viên hệ thống</p></div>
         <span className="hidden h-9 w-9 shrink-0 place-items-center rounded-full lg:grid bg-indigo-50 text-indigo-600"><ShieldCheck className="h-4 w-4" /></span>
-        <button type="button" onClick={onChangePassword} disabled={loading} className="ml-auto min-h-11 shrink-0 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 sm:ml-0">Đổi mật khẩu</button>
+        <div className="ml-auto sm:ml-0"><GuideButton onClick={guide.show} /></div>
+        <button type="button" onClick={onChangePassword} disabled={loading} className="min-h-11 shrink-0 rounded-xl border border-slate-200 px-2.5 text-sm font-medium text-slate-700 sm:px-3">Đổi mật khẩu</button>
         <button type="button" disabled={loading} onClick={() => void logout()} aria-label="Đăng xuất" className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Đăng xuất</span></button>
       </header>
       {logoutError && <p role="alert" className="bg-rose-50 p-3 text-center text-sm text-rose-700">{logoutError}</p>}
       <AdminStudioView />
+      {guide.open && <FirstVisitGuide role="admin" onDismiss={guide.dismiss} />}
     </div>
   );
 }

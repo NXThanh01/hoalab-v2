@@ -10,8 +10,15 @@ import { AITutorView } from "@/frontend/features/ai/components/AITutorView";
 import { ChemistryToolsView } from "@/frontend/features/tools/components/ChemistryToolsView";
 import { CourseCatalogView, PracticeHubView, VirtualLabView } from "@/frontend/features/hubs/components/FeatureHubViews";
 
+import { useAuth } from "@/frontend/features/auth/model/AuthContext";
+import { FirstVisitGuide } from "@/frontend/features/onboarding/components/FirstVisitGuide";
+import { useFirstVisitGuide } from "@/frontend/features/onboarding/model/useFirstVisitGuide";
+import { EsterGamesView } from "@/frontend/features/games/components/EsterGamesView";
+
 export function AppShell() {
-  const { view } = useLearning();
+  const { view, setView } = useLearning();
+  const { user } = useAuth();
+  const guide = useFirstVisitGuide(user?.userId, "student");
 
   const screens = {
     dashboard: <DashboardView />,
@@ -20,6 +27,7 @@ export function AppShell() {
     tools: <ChemistryToolsView />,
     courses: <CourseCatalogView />,
     practice: <PracticeHubView />,
+    games: <EsterGamesView />,
     lab: <VirtualLabView />,
     admin: <DashboardView />,
   };
@@ -27,7 +35,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
       <AppSidebar />
-      <AppHeader />
+      <AppHeader onOpenGuide={guide.show} />
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
@@ -39,6 +47,7 @@ export function AppShell() {
           {screens[view]}
         </motion.div>
       </AnimatePresence>
+      {guide.open && <FirstVisitGuide role="student" onDismiss={guide.dismiss} onExplore={setView} />}
     </div>
   );
 }

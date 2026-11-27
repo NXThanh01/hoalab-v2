@@ -20,13 +20,14 @@ import {
 import { ChemicalNotation } from "@/frontend/components/atoms/ChemicalNotation";
 import { aiModes, aiPromptSuggestions } from "@/frontend/features/ai/data/ai.data";
 import { useAITutor } from "@/frontend/features/ai/hooks/useAITutor";
+import { CHAT_MAX_QUESTION } from "@/shared/chemistry-chat";
 
 function MessageContent({ content }: { content: string }) {
-  return <div className="space-y-2">{content.split("\n").filter(Boolean).map((line, index) => <p key={`${line}-${index}`} className="leading-6"><ChemicalNotation value={line} /></p>)}</div>;
+  return <div className="space-y-2">{content.split("\n").filter(Boolean).map((line, index) => <p key={`${line}-${index}`} className="wrap-anywhere leading-6"><ChemicalNotation value={line} className="whitespace-normal!" /></p>)}</div>;
 }
 
 export function AITutorView() {
-  const { busy, clear, engine, messages, mode, send, setMode } = useAITutor();
+  const { busy, clear, engine, error, messages, mode, ready, retry, send, setMode, truncated } = useAITutor();
   const [input, setInput] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -44,14 +45,12 @@ export function AITutorView() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [busy, messages]);
+  }, [busy, error, messages, truncated]);
 
   const userQuestions = useMemo(() => messages.filter((message) => message.role === "user").length, [messages]);
 
   function sendCurrent() {
-    if (!input.trim()) return;
-    void send(input);
-    setInput("");
+    if (send(input)) setInput("");
   }
 
   function submit(event: FormEvent) {
@@ -73,9 +72,9 @@ export function AITutorView() {
           <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-center">
             <div className="flex items-center gap-4">
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 to-indigo-500 shadow-lg shadow-indigo-950/30"><WandSparkles className="h-7 w-7" /></span>
-              <div><div className="flex items-center gap-2"><h1 className="text-2xl font-black tracking-tight sm:text-3xl">AI Chemistry Copilot</h1><span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">Đang hoạt động</span></div><p className="mt-1 text-sm text-indigo-100/70">Hỏi sâu · Giải từng bước · Kiểm tra ký hiệu và phương trình</p></div>
+              <div><div className="flex items-center gap-2"><h1 className="text-2xl font-black tracking-tight sm:text-3xl">Trợ lý Hóa</h1></div><p className="mt-1 text-sm text-indigo-100/70">Hỏi sâu · Giải từng bước · Kiểm tra ký hiệu và phương trình</p></div>
             </div>
-            <div className="flex gap-2"><div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-center"><p className="text-lg font-black">{userQuestions}</p><p className="text-xs text-indigo-200">Câu hỏi hôm nay</p></div><div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-center"><p className="text-sm font-black text-cyan-300">{engine === "openai" ? "OpenAI" : "Demo AI"}</p><p className="text-xs text-indigo-200">Bộ máy trả lời</p></div></div>
+            <div className="flex gap-2"><div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-center"><p className="text-lg font-black">{userQuestions}</p><p className="text-xs text-indigo-200">Câu hỏi trong phiên</p></div><div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-center"><p className="text-sm font-black text-cyan-300">{engine ? "Gemini" : "Chưa kiểm tra"}</p><p className="text-xs text-indigo-200">Bộ máy trả lời</p></div></div>
           </div>
         </section>
 
@@ -91,13 +90,18 @@ export function AITutorView() {
           <div className="order-1 flex min-h-[650px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm xl:order-2">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div className="flex items-center gap-3"><span className="relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white"><Bot className="h-5 w-5" /><span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" /></span><div><p className="text-sm font-black text-slate-800">HóaLab AI</p><p className="text-xs text-slate-400">Đang ở chế độ {aiModes.find((item) => item.id === mode)?.label.toLowerCase()}</p></div></div><button onClick={clear} className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-indigo-600" aria-label="Tạo cuộc trò chuyện mới"><MessageSquarePlus className="h-5 w-5" /></button></div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto bg-[linear-gradient(180deg,#fff,#fafbff)] px-4 py-6 sm:px-6">
+            <div role="log" aria-label="Hội thoại với Trợ lý Hóa" className="flex-1 space-y-5 overflow-y-auto bg-[linear-gradient(180deg,#fff,#fafbff)] px-4 py-6 sm:px-6">
               <AnimatePresence initial={false}>{messages.map((message) => <motion.div key={message.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>{message.role === "assistant" && <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-600"><Bot className="h-4 w-4" /></span>}<div className={`group max-w-[82%] rounded-[20px] px-4 py-3 text-sm ${message.role === "user" ? "rounded-tr-md bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-100" : "rounded-tl-md border border-slate-200 bg-white text-slate-600 shadow-sm"}`}><MessageContent content={message.content} />{message.role === "assistant" && <button onClick={() => void copyMessage(message.id, message.content)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-400 opacity-0 transition group-hover:opacity-100">{copied === message.id ? <Check className="h-3 w-3 text-emerald-500" /> : <Clipboard className="h-3 w-3" />}{copied === message.id ? "Đã sao chép" : "Sao chép"}</button>}</div></motion.div>)}</AnimatePresence>
               {busy && <div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-100 text-indigo-600"><Bot className="h-4 w-4" /></span><div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin text-indigo-500" /> Đang phân tích kiến thức và kiểm tra ký hiệu...</div></div>}
+              {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                <p role="alert">{error}</p>
+                <button type="button" onClick={retry} className="mt-1 min-h-11 font-semibold underline underline-offset-4">Thử lại câu vừa gửi</button>
+              </div>}
+              {truncated && <p role="status" className="text-sm text-slate-600">Câu trả lời đã đạt giới hạn độ dài. Bạn có thể hỏi tiếp về phần còn thiếu.</p>}
               <div ref={endRef} />
             </div>
 
-            <div className="border-t border-slate-100 bg-white p-4 sm:p-5"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{aiPromptSuggestions.slice(0, 3).map((prompt) => <button key={prompt} onClick={() => setInput(prompt)} className="whitespace-nowrap rounded-full border border-indigo-100 bg-indigo-50/60 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100">{prompt}</button>)}</div><form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-100"><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendCurrent(); } }} className="min-h-20 w-full resize-none bg-transparent px-2 py-1 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-400" placeholder="Nhập câu hỏi, bài tập hoặc phương trình hóa học..." /><div className="flex items-center justify-between"><span className="px-2 text-xs text-slate-400">Enter để gửi · Shift + Enter xuống dòng</span><button disabled={!input.trim() || busy} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 disabled:opacity-40"><Send className="h-4 w-4" /> Gửi câu hỏi</button></div></form></div>
+            <div className="border-t border-slate-100 bg-white p-4 sm:p-5"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{aiPromptSuggestions.slice(0, 3).map((prompt) => <button key={prompt} onClick={() => setInput(prompt)} className="whitespace-nowrap rounded-full border border-indigo-100 bg-indigo-50/60 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100">{prompt}</button>)}</div><form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-100"><textarea aria-label="Câu hỏi Hóa học" maxLength={CHAT_MAX_QUESTION} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendCurrent(); } }} className="min-h-20 w-full resize-none bg-transparent px-2 py-1 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-400" placeholder="Nhập câu hỏi, bài tập hoặc phương trình hóa học..." /><div className="flex items-center justify-between"><span className="px-2 text-xs text-slate-400">Enter để gửi · Shift + Enter xuống dòng</span><button disabled={!ready || !input.trim() || busy} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 disabled:opacity-40"><Send className="h-4 w-4" /> Gửi câu hỏi</button></div></form></div>
           </div>
 
           <aside className="order-3 space-y-4">

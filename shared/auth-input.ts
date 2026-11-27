@@ -16,7 +16,7 @@ export const changePasswordInput = z.object({
   if (input.newPassword === input.currentPassword) context.addIssue({ code: "custom", path: ["newPassword"], message: "Hãy chọn mật khẩu khác mật khẩu hiện tại." });
 });
 
-export const learningViews = ["dashboard", "lesson", "ai", "tools", "courses", "practice", "lab"] as const;
+export const learningViews = ["dashboard", "lesson", "ai", "tools", "courses", "practice", "games", "lab"] as const;
 export type LearningView = typeof learningViews[number];
 export function safeLearningView(value: unknown): LearningView {
   return learningViews.find((view) => view === value) ?? "dashboard";

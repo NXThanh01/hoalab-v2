@@ -1,8 +1,8 @@
 # HóaLab
 
-Nền tảng tự học Hóa học THPT tích hợp video tương tác, luyện tập, phòng thi thử và trợ lý AI. Bản demo hiện tập trung vào kiến thức **Hóa học 12** và chạy độc lập trên localhost.
+Nền tảng tự học Hóa học THPT tích hợp video tương tác, luyện tập, phòng thi thử và trợ lý AI. Bản demo hiện tập trung vào kiến thức **Hóa học 12** với bản chạy localhost và bản triển khai trên Vercel.
 
-Phiên bản giao diện hiện tại tập trung vào 5 năng lực cốt lõi: lộ trình Hóa 12, luyện đề, phòng thí nghiệm, Trợ lý Hóa và tổng quan tiến độ. Game, cộng đồng và tài liệu rời không còn chiếm điều hướng chính. Xem [sơ đồ sản phẩm](docs/PRODUCT_MAP.md).
+Điều hướng học sinh gồm Tổng quan, Kho tài liệu theo khối, Luyện đề, Game ôn tập, Phòng thí nghiệm, Trợ lý Hóa và Công cụ. Xem [sơ đồ sản phẩm](docs/PRODUCT_MAP.md).
 
 ## Demo Hóa học 12
 
@@ -16,6 +16,8 @@ Phiên bản giao diện hiện tại tập trung vào 5 năng lực cốt lõi:
   - Polymer
   - Điện hóa và kim loại
 - 3 đề thi mẫu: 15 phút, 25 phút và đề tổng ôn 45 phút.
+- Bộ Ester – Lipid gồm 150 câu, xuất bản thành 3 quiz 50 câu theo mức Nhận biết, Thông hiểu và Vận dụng.
+- Game Ester – Lipid dùng bộ 150 câu đã xuất bản trên PostgreSQL. Có bốn chế độ: Chọn nhanh, Đúng hay sai, Tính nhẩm và Viết phương trình.
 - Phòng thi thử có chế độ toàn màn hình, đồng hồ đếm ngược, tự lưu đáp án, đánh dấu xem lại và tự nộp khi hết giờ.
 - Hệ thống ghi nhận số lần rời tab hoặc thoát toàn màn hình, nhưng tách tín hiệu giám sát khỏi điểm kiến thức để tránh trừ điểm oan.
 - Sau khi nộp, học sinh nhận bảng đối chiếu từng câu gồm đáp án đã chọn, đáp án đúng, trọng số và giải thích.
@@ -28,7 +30,7 @@ Phiên bản giao diện hiện tại tập trung vào 5 năng lực cốt lõi:
 
 Chạy `npm run db:migrate`, cấu hình mật khẩu seed trong biến môi trường riêng, rồi chạy `npm run db:seed:auth`. Seed mặc định dùng ID `admin@hoalab.local` và có thể tạo thêm `student@hoalab.local` nếu cấu hình mật khẩu học sinh. Các tài khoản nằm trong PostgreSQL và chỉ lưu hash Argon2id.
 
-Học sinh vào không gian học tập sau khi đăng nhập. Quản trị viên vào Admin Studio và có tab **Quản lý người dùng** để tìm tài khoản, lọc trạng thái và đặt lại mật khẩu.
+Học sinh vào không gian học tập sau khi đăng nhập. Quản trị viên vào Admin Studio và có tab **Quản lý người dùng** để tìm tài khoản, lọc trạng thái và đặt lại mật khẩu. Mỗi vai trò có hướng dẫn 3 bước sau lần đăng nhập đầu trên trình duyệt. Nút **?** trên thanh trên cùng mở lại hướng dẫn.
 
 Admin được chuyển thẳng vào cổng quản trị riêng. Admin Studio hỗ trợ:
 
@@ -129,9 +131,9 @@ Tiến trình học được đồng bộ 30 giây một lần; đề đã xuấ
 
 ## AI
 
-- Không có `OPENAI_API_KEY`: sử dụng demo grading engine và câu trả lời Hóa học mẫu.
-- Có `OPENAI_API_KEY`: API route gọi OpenAI Responses API ở phía máy chủ.
-- API key không bao giờ được gửi xuống trình duyệt.
+- **Trợ lý Hóa:** đặt `GEMINI_API_KEY` trong `.env.local` hoặc Vercel Environment Variables. Mô hình mặc định là `gemini-3.1-flash-lite`, có thể đổi bằng `GEMINI_MODEL`. Khởi động lại server hoặc triển khai lại sau khi thêm khóa.
+- Câu hỏi và tối đa 8 tin nhắn gần nhất được gửi từ máy chủ đến Gemini. Khóa API chỉ nằm ở máy chủ.
+- **Chấm tự luận:** dùng `OPENAI_API_KEY` nếu cấu hình. Khi thiếu khóa, phần chấm vẫn dùng bộ chấm demo.
 
 ## Đưa lên Vercel hoặc tên miền riêng
 

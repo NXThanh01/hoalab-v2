@@ -5,7 +5,7 @@ import { useAuth } from "@/frontend/features/auth/model/AuthContext";
 import { getCloudProgress, saveCloudProgress } from "@/frontend/features/progress/services/progress.service";
 import { safeLearningView, type LearningView } from "@/shared/auth-input";
 
-export type AppView = "dashboard" | "lesson" | "ai" | "tools" | "courses" | "practice" | "lab" | "admin";
+export type AppView = "dashboard" | "lesson" | "ai" | "tools" | "courses" | "practice" | "games" | "lab" | "admin";
 
 type LearningState = {
   view: AppView;

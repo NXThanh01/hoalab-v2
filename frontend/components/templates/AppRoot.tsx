@@ -17,7 +17,7 @@ export function AppRoot({ initialView }: { initialView: LearningView }) {
   if (user.mustChangePassword || passwordEditor) {
     return <ChangePasswordView forced={user.mustChangePassword} onClose={() => setPasswordEditor(false)} />;
   }
-  if (isAdmin) return <AdminPortalShell onChangePassword={() => setPasswordEditor(true)} />;
+  if (isAdmin) return <AdminPortalShell key={user.userId} onChangePassword={() => setPasswordEditor(true)} />;
 
   return <LearningProvider key={user.userId} initialView={initialView}>
     {logoutError && <p role="alert" className="bg-rose-50 p-3 text-center text-sm text-rose-700">{logoutError}</p>}

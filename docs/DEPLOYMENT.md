@@ -26,8 +26,12 @@ The UI, role-based entry flow and API contracts are portable. Before deploying p
 1. Configure a production `HOALAB_SESSION_SECRET` and `DATABASE_URL` in the hosting dashboard.
 2. Back up the database and apply the migrations before deploying the new auth code.
 3. Seed production accounts by running `npm run db:seed:auth -- --allow-remote` with an explicitly selected production connection and secure seed credentials. Check that the expected admin and user rows exist before switching traffic. Cookies from the earlier implementation will expire at cutover, so users must sign in again.
-4. Configure `OPENAI_API_KEY` server-side if live AI responses are required.
+4. Configure `GEMINI_API_KEY` for Trợ lý Hóa and optionally `GEMINI_MODEL` to override the default. `OPENAI_API_KEY` is used separately for AI grading. Set these as server-side variables.
 5. Add the custom domain in the hosting provider and update DNS only after the deployment passes checks.
+
+### Ester – Lipid games
+
+The four game modes read the 150 questions attached to the three published Ester – Lipid quizzes in PostgreSQL. When moving the demo to a new database, transfer the folder, questions, quizzes and quiz-question links with their IDs intact. A code deployment alone leaves the game bank empty on a fresh database.
 
 ### Admin video uploads
 
