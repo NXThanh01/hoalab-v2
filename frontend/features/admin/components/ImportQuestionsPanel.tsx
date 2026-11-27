@@ -1,20 +1,76 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CheckCircle2, CloudUpload, LoaderCircle, ShieldCheck } from "lucide-react";
-import { useAdminStudio } from "../hooks/useAdminStudio";
+import { useState } from "react";
+import { readQuestionFile } from "../model/question-import";
+import type { ImportedQuestion } from "@/shared/question-input";
+import type { useAdminStudio } from "../hooks/useAdminStudio";
 
-type Studio = ReturnType<typeof useAdminStudio>;
-
-export function ImportQuestionsPanel({ studio, onDone }: { studio: Studio; onDone: () => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+export function ImportQuestionsPanel({ studio }: { studio: ReturnType<typeof useAdminStudio> }) {
+  const [rows, setRows] = useState<ImportedQuestion[]>([]);
   const [fileName, setFileName] = useState("");
+  const [reading, setReading] = useState(false);
   const [notice, setNotice] = useState("");
-  async function chooseFile(file?: File) { if (!file) return; setNotice(""); setFileName(file.name); try { const text = await file.text(); setRows(file.name.endsWith(".json") ? parseJson(text) : parseCsv(text)); } catch { setRows([]); setNotice("Không đọc được file. Hãy dùng đúng mẫu JSON hoặc CSV."); } }
-  async function upload() { try { await studio.importQuestions(rows); setNotice(`Đã nhập thành công ${rows.length} câu hỏi.`); window.setTimeout(onDone, 700); } catch (error) { setNotice(error instanceof Error ? error.message : "Không thể nhập đề."); } }
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-black uppercase tracking-widest text-indigo-500">Bulk import</p><h2 className="mt-1 text-2xl font-black">Tải đề lên HóaLab</h2><p className="mt-2 text-sm leading-6 text-slate-500">Nhập tối đa 100 câu từ JSON hoặc CSV. Dữ liệu được kiểm tra trước khi ghi vào ngân hàng.</p><input ref={inputRef} type="file" accept=".json,.csv" className="hidden" onChange={(event) => void chooseFile(event.target.files?.[0])} /><button type="button" onClick={() => inputRef.current?.click()} className="mt-6 flex min-h-64 w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center"><span className="grid h-16 w-16 place-items-center rounded-2xl bg-indigo-600 text-white"><CloudUpload className="h-7 w-7" /></span><p className="mt-5 text-lg font-black">Chọn file đề thi</p><p className="mt-2 text-sm text-slate-500">.json hoặc .csv</p></button>{fileName && <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"><div><p className="text-sm font-bold">{fileName}</p><p className="text-xs text-slate-400">Đã đọc {rows.length} câu hỏi</p></div><CheckCircle2 className="h-5 w-5 text-emerald-500" /></div>}{notice && <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">{notice}</p>}<button type="button" disabled={!rows.length || studio.mutating} onClick={() => void upload()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 font-bold text-white disabled:opacity-40">{studio.mutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />} Nhập {rows.length || ""} câu hỏi</button></section><aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="font-black">Cấu trúc JSON mẫu</h3><pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-[11px] leading-5 text-indigo-200">{`[{\n  "type": "multiple_choice",\n  "subject": "Ester - Lipid",\n  "gradeLevel": 12,\n  "prompt": "...",\n  "options": ["A", "B"],\n  "correctAnswer": "A",\n  "explanation": "...",\n  "difficulty": "medium",\n  "points": 1\n}]`}</pre><div className="mt-5 rounded-xl bg-emerald-50 p-4"><p className="flex items-center gap-2 font-bold text-emerald-700"><ShieldCheck className="h-4 w-4" /> Kiểm tra an toàn</p><p className="mt-2 text-xs leading-5 text-emerald-700/80">File được đọc trong trình duyệt; chỉ dữ liệu hợp lệ mới gửi lên máy chủ.</p></div></aside></div>;
+  const [error, setError] = useState("");
+
+  async function select(file?: File) {
+    if (!file) return;
+    setReading(true);
+    setRows([]);
+    setFileName(file.name);
+    setNotice("");
+    setError("");
+    try {
+      setRows(await readQuestionFile(file));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Không đọc được tệp.");
+    } finally {
+      setReading(false);
+    }
+  }
+
+  async function submit() {
+    setError("");
+    try {
+      await studio.importQuestions(rows);
+      setNotice(`Đã nhập ${rows.length} câu hỏi vào ngân hàng.`);
+      setRows([]);
+      setFileName("");
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Không thể nhập câu hỏi.");
+    }
+  }
+
+  return (
+    <section className="mt-5 space-y-4 rounded-2xl border border-slate-200 p-4" aria-labelledby="import-bank-title">
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
+        <h3 id="import-bank-title" className="font-semibold">Nhập câu hỏi từ tệp</h3>
+        <a href="/mau-cau-hoi-hoalab.csv" download className="inline-flex min-h-11 items-center text-sm font-medium text-blue-800 underline underline-offset-4">Tải CSV mẫu</a>
+      </div>
+      <label className="block">
+        <span className="text-sm text-slate-600">Chọn CSV hoặc JSON, tối đa 100 câu và 1 MB.</span>
+        <input type="file" accept=".csv,.json" disabled={reading || studio.mutating} className="input-admin mt-2 min-h-11 file:mr-2 file:font-medium" onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          void select(file);
+        }} />
+      </label>
+      {fileName && <p className="break-all text-sm text-slate-600">{fileName}{rows.length ? ` · ${rows.length} câu hợp lệ` : ""}</p>}
+      {rows.length > 0 && <QuestionImportPreview rows={rows} />}
+      {reading && <p role="status" className="text-sm">Đang đọc tệp…</p>}
+      {error && <p role="alert" className="break-words text-sm text-rose-700">{error}</p>}
+      {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
+      <button type="button" disabled={!rows.length || reading || studio.mutating} onClick={() => void submit()} className="min-h-11 w-full rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-40 sm:w-auto">
+        {studio.mutating ? "Đang nhập…" : "Nhập vào ngân hàng"}
+      </button>
+    </section>
+  );
 }
 
-function parseJson(text: string) { const value = JSON.parse(text); if (!Array.isArray(value)) throw new Error("INVALID_JSON"); return value.slice(0, 100) as Record<string, unknown>[]; }
-function parseCsv(text: string) { const lines = text.split(/\r?\n/).filter(Boolean); if (lines.length < 2) throw new Error("EMPTY_CSV"); const headers = lines[0].split(",").map((item) => item.trim()); return lines.slice(1, 101).map((line) => { const values = line.split(",").map((item) => item.trim()); const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""])); return { ...row, gradeLevel: Number(row.gradeLevel), points: Number(row.points || 1), options: String(row.options || "").split("|").filter(Boolean) }; }); }
+export function QuestionImportPreview({ rows }: { rows: ImportedQuestion[] }) {
+  return <details className="rounded-xl border border-slate-200 bg-white px-3">
+    <summary className="min-h-11 cursor-pointer py-2.5 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-blue-600">Xem trước câu hỏi</summary>
+    <ol className="max-h-64 list-decimal space-y-3 overflow-y-auto break-words pb-3 pl-5 text-sm text-slate-700">
+      {rows.map((row, index) => <li key={index}>{row.prompt}<p className="mt-1 text-slate-500">Hóa {row.gradeLevel}{row.correctAnswer ? ` · Đáp án: ${row.correctAnswer}` : ""}</p></li>)}
+    </ol>
+  </details>;
+}

@@ -1,8 +1,10 @@
 import { desc, eq } from "drizzle-orm";
+import { head } from "@vercel/blob";
 import { z } from "zod";
 import { getDb } from "@/database/client";
 import { activityLog, lessonContents } from "@/database/schema";
 import { getAdminOrResponse } from "@/backend/modules/admin/admin-http";
+import { VIDEO_MAX_BYTES, getVideoBlobPath, videoContentTypes } from "@/shared/lesson-video";
 
 export const dynamic = "force-dynamic";
 
@@ -35,14 +37,32 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await getAdminOrResponse();
   if ("response" in auth) return auth.response;
-  const parsed = lessonInput.safeParse(await request.json());
+  const parsed = lessonInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Dữ liệu bài giảng chưa hợp lệ.", issues: parsed.error.flatten() }, { status: 400 });
   const { checkpoints, ...input } = parsed.data;
+  if (!input.videoUrl && input.status === "published") {
+    return Response.json({ error: "Hãy tải video hoặc nhập liên kết HTTPS trước khi xuất bản." }, { status: 400 });
+  }
+  if (new Set(checkpoints.map((item) => item.timeSeconds)).size !== checkpoints.length || new Set(checkpoints.map((item) => item.id)).size !== checkpoints.length) {
+    return Response.json({ error: "Mỗi checkpoint cần một mốc thời gian riêng." }, { status: 400 });
+  }
+  const path = getVideoBlobPath(input.videoUrl);
+  if (input.videoUrl && !path && (!URL.canParse(input.videoUrl) || new URL(input.videoUrl).protocol !== "https:")) {
+    return Response.json({ error: "Liên kết video phải dùng HTTPS." }, { status: 400 });
+  }
+  if (path) {
+    if (!path.startsWith(`lessons/${input.id}/`)) return Response.json({ error: "Video không thuộc bài đang chỉnh sửa." }, { status: 400 });
+    const blob = await head(path).catch(() => null);
+    if (!blob || blob.size > VIDEO_MAX_BYTES || !videoContentTypes.includes(blob.contentType)) {
+      return Response.json({ error: "Video chưa tải xong hoặc không đúng định dạng." }, { status: 400 });
+    }
+  }
   const db = getDb();
   const [existing] = await db.select({ id: lessonContents.id }).from(lessonContents).where(eq(lessonContents.id, input.id)).limit(1);
   const values = { ...input, checkpointsJson: JSON.stringify(checkpoints), createdBy: auth.profile.userId, updatedAt: new Date().toISOString() };
-  if (existing) await db.update(lessonContents).set(values).where(eq(lessonContents.id, input.id));
-  else await db.insert(lessonContents).values(values);
-  await db.insert(activityLog).values({ actorId: auth.profile.userId, action: `${input.status === "published" ? "Xuất bản" : "Lưu nháp"} video Bài ${input.lessonNumber}`, entityType: "lesson", entityId: input.id });
+  await db.transaction(async (tx) => {
+    await tx.insert(lessonContents).values(values).onConflictDoUpdate({ target: lessonContents.id, set: values });
+    await tx.insert(activityLog).values({ actorId: auth.profile.userId, action: `${input.status === "published" ? "Xuất bản" : "Lưu nháp"} video Bài ${input.lessonNumber}`, entityType: "lesson", entityId: input.id });
+  });
   return Response.json({ lesson: { ...values, checkpoints } }, { status: existing ? 200 : 201 });
 }

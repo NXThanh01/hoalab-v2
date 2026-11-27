@@ -1,8 +1,9 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/database/client";
-import { activityLog, examQuestions, exams, questionBank } from "@/database/schema";
+import { activityLog, examFolders, examQuestions, exams, questionBank } from "@/database/schema";
 import { getAdminOrResponse } from "@/backend/modules/admin/admin-http";
+import { questionBatch } from "@/shared/question-input";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +50,40 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await getAdminOrResponse();
   if ("response" in auth) return auth.response;
-  const parsed = examInput.safeParse(await request.json());
+  const parsed = z.union([
+    examInput.omit({ questionIds: true }).extend({ importedQuestions: questionBatch, folderId: z.string().uuid() }),
+    examInput,
+  ]).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Thông tin kỳ thi chưa hợp lệ.", issues: parsed.error.flatten() }, { status: 400 });
   const input = parsed.data;
   const db = getDb();
   const id = crypto.randomUUID();
+  if ("importedQuestions" in input) {
+    const [folder] = await db.select({ id: examFolders.id }).from(examFolders)
+      .where(and(eq(examFolders.id, input.folderId), eq(examFolders.gradeLevel, input.gradeLevel))).limit(1);
+    if (!folder || input.importedQuestions.some((question) => question.gradeLevel !== input.gradeLevel)) {
+      return Response.json({ error: "Thư mục và câu hỏi phải cùng khối lớp với đề." }, { status: 400 });
+    }
+    const questions = input.importedQuestions.map(({ options, ...question }) => ({
+      ...question, id: crypto.randomUUID(), optionsJson: JSON.stringify(options), createdBy: auth.profile.userId,
+    }));
+    await db.transaction(async (tx) => {
+      await tx.insert(questionBank).values(questions);
+      await tx.insert(exams).values({
+        id, title: input.title, description: input.description, gradeLevel: input.gradeLevel,
+        folderId: input.folderId, kind: input.kind, durationMinutes: input.durationMinutes,
+        passScore: input.passScore, startsAt: input.startsAt || null, endsAt: input.endsAt || null,
+        createdBy: auth.profile.userId,
+      });
+      await tx.insert(examQuestions).values(questions.map((question, position) => ({
+        examId: id, questionId: question.id, position, points: question.points,
+      })));
+      await tx.insert(activityLog).values({
+        actorId: auth.profile.userId, action: `Tạo đề từ ${questions.length} câu nhập`, entityType: "exam", entityId: id,
+      });
+    });
+    return Response.json({ id }, { status: 201 });
+  }
   await db.insert(exams).values({
     id,
     title: input.title,

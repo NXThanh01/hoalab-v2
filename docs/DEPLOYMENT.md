@@ -28,4 +28,10 @@ The UI, role-based entry flow and API contracts are portable. Before deploying p
 4. Configure `OPENAI_API_KEY` server-side if live AI responses are required.
 5. Add the custom domain in the hosting provider and update DNS only after the deployment passes checks.
 
+### Admin video uploads
+
+Connect a **private Vercel Blob** store to the project environment. The app accepts Vercel's Blob OIDC configuration (`BLOB_STORE_ID`) or `BLOB_READ_WRITE_TOKEN`. For local testing, use a separate development store, or enter a direct HTTPS video URL in Admin Studio.
+
+Administrators can upload MP4/WebM files up to 100 MB, add checkpoints, and then save a draft or publish. Published private videos are served to signed-in learners with expiring URLs.
+
 For a larger user base, use Supabase Auth or Auth.js instead of environment-defined accounts. `backend/modules/auth/session.ts` is the authentication boundary that needs to be replaced.

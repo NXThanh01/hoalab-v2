@@ -3,22 +3,9 @@ import { z } from "zod";
 import { getDb } from "@/database/client";
 import { activityLog, examQuestions, questionBank } from "@/database/schema";
 import { getAdminOrResponse } from "@/backend/modules/admin/admin-http";
+import { questionBatch, questionInput } from "@/shared/question-input";
 
 export const dynamic = "force-dynamic";
-
-const questionInput = z.object({
-  type: z.enum(["multiple_choice", "essay", "equation"]),
-  subject: z.string().trim().min(2).max(120),
-  gradeLevel: z.number().int().min(10).max(12),
-  prompt: z.string().trim().min(5).max(4000),
-  options: z.array(z.string().trim().min(1)).max(6).default([]),
-  correctAnswer: z.string().trim().max(2000).default(""),
-  explanation: z.string().trim().max(4000).default(""),
-  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-  points: z.number().positive().max(10).default(1),
-});
-
-const bodyInput = z.union([questionInput, z.object({ questions: z.array(questionInput).min(1).max(100) })]);
 
 function serialize(row: typeof questionBank.$inferSelect) {
   return { ...row, options: JSON.parse(row.optionsJson) as string[] };
@@ -34,34 +21,27 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await getAdminOrResponse();
   if ("response" in auth) return auth.response;
-  const parsed = bodyInput.safeParse(await request.json());
-  if (!parsed.success) return Response.json({ error: "Nội dung câu hỏi chưa hợp lệ.", issues: parsed.error.flatten() }, { status: 400 });
-  const inputs = "questions" in parsed.data ? parsed.data.questions : [parsed.data];
+  const body: unknown = await request.json().catch(() => null);
+  const bulk = body !== null && typeof body === "object" && "questions" in body;
+  const parsed = (bulk ? questionBatch : questionInput).safeParse(bulk ? body.questions : body);
+  if (!parsed.success) return Response.json({ error: "Nội dung câu hỏi chưa hợp lệ.", issues: parsed.error.issues }, { status: 400 });
+  const inputs = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
   const db = getDb();
-  const created = [];
-  for (const input of inputs) {
-    const id = crypto.randomUUID();
-    const record = {
-      id,
-      type: input.type,
-      subject: input.subject,
-      gradeLevel: input.gradeLevel,
-      prompt: input.prompt,
-      optionsJson: JSON.stringify(input.options),
-      correctAnswer: input.correctAnswer,
-      explanation: input.explanation,
-      difficulty: input.difficulty,
-      points: input.points,
+  const records = inputs.map(({ options, ...question }) => ({
+      ...question,
+      id: crypto.randomUUID(),
+      optionsJson: JSON.stringify(options),
       createdBy: auth.profile.userId,
-    };
-    await db.insert(questionBank).values(record);
-    created.push({ ...record, options: input.options, createdAt: new Date().toISOString() });
-  }
-  await db.insert(activityLog).values({
-    actorId: auth.profile.userId,
-    action: inputs.length > 1 ? `Nhập ${inputs.length} câu hỏi` : "Tạo câu hỏi",
-    entityType: "question",
-    entityId: created[0].id,
+  }));
+  const created = await db.transaction(async (tx) => {
+    const rows = await tx.insert(questionBank).values(records).returning();
+    await tx.insert(activityLog).values({
+      actorId: auth.profile.userId,
+      action: bulk ? `Nhập ${inputs.length} câu hỏi` : "Tạo câu hỏi",
+      entityType: "question",
+      entityId: records[0].id,
+    });
+    return rows.map(serialize);
   });
   return Response.json({ questions: created }, { status: 201 });
 }

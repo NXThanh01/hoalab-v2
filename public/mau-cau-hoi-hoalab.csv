@@ -1,0 +1,2 @@
+type,subject,gradeLevel,prompt,options,correctAnswer,explanation,difficulty,points
+multiple_choice,Ester - Lipid,12,"Chất nào sau đây là ester, không phải alcohol?",CH3COOC2H5|C2H5OH|CH3COOH|NaOH,A,CH3COOC2H5 chứa nhóm chức ester.,easy,1
