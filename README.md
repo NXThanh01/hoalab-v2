@@ -26,27 +26,15 @@ Phiên bản giao diện hiện tại tập trung vào 5 năng lực cốt lõi:
 
 ## Hai luồng tài khoản độc lập
 
-### Học sinh
+Chạy `npm run db:migrate`, cấu hình mật khẩu seed trong biến môi trường riêng, rồi chạy `npm run db:seed:auth`. Seed mặc định dùng ID `admin@hoalab.local` và có thể tạo thêm `student@hoalab.local` nếu cấu hình mật khẩu học sinh. Các tài khoản nằm trong PostgreSQL và chỉ lưu hash Argon2id.
 
-```text
-Email: student@hoalab.local
-Password: Student@123
-```
-
-Sau đăng nhập, học sinh được chuyển vào Dashboard học tập, khóa học Hóa 12 và phòng thi thử.
-
-### Quản trị viên
-
-```text
-Email: admin@hoalab.local
-Password: Admin@123
-```
+Học sinh vào không gian học tập sau khi đăng nhập. Quản trị viên vào Admin Studio và có tab **Quản lý người dùng** để tìm tài khoản, lọc trạng thái và đặt lại mật khẩu.
 
 Admin được chuyển thẳng vào cổng quản trị riêng. Admin Studio hỗ trợ:
 
 - Nạp bộ dữ liệu demo Hóa 12 chỉ bằng một nút.
 - Quản lý 30 bài Hóa 12 theo 8 chương của SGK Kết nối tri thức.
-- Gắn URL video, xem trước file video cục bộ và lưu nháp bài giảng.
+- Tải MP4/WebM lên Vercel Blob riêng tư hoặc gắn URL HTTPS, rồi lưu nháp bài giảng.
 - Chọn trực tiếp thời điểm trên video để tạo câu hỏi checkpoint, đáp án và giải thích.
 - Xuất bản bài giảng vào Kho tài liệu của học sinh.
 - Tạo câu hỏi trắc nghiệm, tự luận hoặc phương trình.
@@ -86,7 +74,7 @@ Sau khi đăng nhập admin, chọn **Nạp demo Hóa 12** để tạo 15 câu h
 
 ## Biến môi trường
 
-Sao chép `.env.example` thành `.env.local` khi cần cấu hình tài khoản riêng:
+Thiết lập `DATABASE_URL` và `HOALAB_SESSION_SECRET` trong môi trường chạy. Các biến email và mật khẩu dưới đây chỉ dùng khi seed tài khoản:
 
 ```env
 DATABASE_URL=postgresql://your-user@localhost:5432/hoalab_dev
@@ -151,8 +139,8 @@ Giao diện, role flow và API contract đã tách khỏi `gpt.site`. Trước k
 
 1. Tạo PostgreSQL production trên Neon, Supabase hoặc nhà cung cấp tương đương.
 2. Đặt `DATABASE_URL` trong Vercel và chạy migration production.
-3. Dùng Supabase Auth hoặc Auth.js thay cho tài khoản từ biến môi trường.
-4. Khai báo toàn bộ biến môi trường trong Vercel Dashboard.
+3. Seed tài khoản production vào PostgreSQL trước khi chuyển sang mã xác thực mới.
+4. Khai báo khóa phiên production và các biến dịch vụ cần dùng trong Vercel Dashboard.
 5. Kiểm thử đăng nhập, phân quyền admin và lưu tiến trình trước khi trỏ tên miền.
 
 Xem thêm [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) và [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

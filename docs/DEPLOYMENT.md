@@ -11,20 +11,21 @@ npm run dev
 
 Open `http://127.0.0.1:5173`.
 
-When no `.env.local` is present, development mode exposes two local-only accounts:
+### Authentication setup
 
-- Student: `student@hoalab.local` / `Student@123`
-- Admin: `admin@hoalab.local` / `Admin@123`
+Set `DATABASE_URL` and a random `HOALAB_SESSION_SECRET` of at least 32 bytes. Local development supplies a development-only session key if none is configured. Run the migration followed by `npm run db:seed:auth` with `HOALAB_ADMIN_PASSWORD` set in the command environment or an ignored local env file. The default admin login ID is `admin@hoalab.local`; set `HOALAB_ADMIN_EMAIL` to choose another. The optional student seed uses `HOALAB_STUDENT_EMAIL` and `HOALAB_STUDENT_PASSWORD`. Choose passwords of 15–128 characters.
 
-These fallback accounts are disabled by production builds. Copy `.env.example` to `.env.local` and replace every credential before sharing the app.
+The seed looks up existing profiles by their login email to retain learning and exam history. It never replaces an existing password. If the previous admin and student should retain their data, use their existing login IDs for the first seed. Password seed inputs are only needed when creating those account rows. Keep them out of Git and remove any obsolete environment passwords from the host after cutover and verification.
+
+Remembered sessions expire after 30 days. Browser-session cookies expire server-side after 12 hours. An admin reset revokes all old sessions and creates a temporary password valid for 24 hours. A session opened with a temporary password can only change the password or sign out and expires after 15 minutes. The login limiter allows five attempts per login ID and 60 per trusted source bucket in a 15-minute window.
 
 ## Custom domain or Vercel
 
 The UI, role-based entry flow and API contracts are portable. Before deploying publicly:
 
-1. Configure all `HOALAB_*` environment variables in the hosting dashboard.
-2. Create a hosted PostgreSQL database and set `DATABASE_URL`.
-3. Run `npm run db:migrate` against the production database and enable backups.
+1. Configure a production `HOALAB_SESSION_SECRET` and `DATABASE_URL` in the hosting dashboard.
+2. Back up the database and apply the migrations before deploying the new auth code.
+3. Seed production accounts by running `npm run db:seed:auth -- --allow-remote` with an explicitly selected production connection and secure seed credentials. Check that the expected admin and user rows exist before switching traffic. Cookies from the earlier implementation will expire at cutover, so users must sign in again.
 4. Configure `OPENAI_API_KEY` server-side if live AI responses are required.
 5. Add the custom domain in the hosting provider and update DNS only after the deployment passes checks.
 
@@ -34,4 +35,4 @@ Connect a **private Vercel Blob** store to the project environment. The app acce
 
 Administrators can upload MP4/WebM files up to 100 MB, add checkpoints, and then save a draft or publish. Published private videos are served to signed-in learners with expiring URLs.
 
-For a larger user base, use Supabase Auth or Auth.js instead of environment-defined accounts. `backend/modules/auth/session.ts` is the authentication boundary that needs to be replaced.
+The app verifies JWT claims with `jose` and checks each session and the current account status in PostgreSQL. Passwords are hashed with Argon2id. Production cookies are HttpOnly, Secure and SameSite=Lax.

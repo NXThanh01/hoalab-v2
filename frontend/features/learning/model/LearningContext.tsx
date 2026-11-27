@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/frontend/features/auth/model/AuthContext";
 import { getCloudProgress, saveCloudProgress } from "@/frontend/features/progress/services/progress.service";
+import { safeLearningView, type LearningView } from "@/shared/auth-input";
 
 export type AppView = "dashboard" | "lesson" | "ai" | "tools" | "courses" | "practice" | "lab" | "admin";
 
@@ -23,9 +24,21 @@ const LearningContext = createContext<LearningState | null>(null);
 
 export const LEARNING_STORAGE_KEY = "hoalab-progress-grade12-v2";
 
-export function LearningProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const [view, setView] = useState<AppView>("dashboard");
+export function LearningProvider({ children, initialView }: { children: React.ReactNode; initialView: LearningView }) {
+  const { isAuthenticated, user } = useAuth();
+  const storageKey = `${LEARNING_STORAGE_KEY}:${user?.userId ?? "unknown"}`;
+  const [view, setScreen] = useState<AppView>(initialView);
+  const [restored, setRestored] = useState(false);
+
+  const setView = useCallback((next: AppView) => {
+    const screen = safeLearningView(next);
+    setScreen(screen);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("adminTab");
+    if (screen === "dashboard") url.searchParams.delete("view");
+    else url.searchParams.set("view", screen);
+    window.history.replaceState(null, "", url);
+  }, []);
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
   const [unlockedLesson, setUnlockedLesson] = useState(1);
   const [bestScore, setBestScore] = useState(0);
@@ -34,9 +47,10 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const restoreProgress = window.setTimeout(() => {
-      const saved = localStorage.getItem(LEARNING_STORAGE_KEY);
-      if (!saved) return;
+      setScreen(safeLearningView(new URLSearchParams(window.location.search).get("view")));
       try {
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) return;
         const parsed = JSON.parse(saved) as {
           completedLessons: number[];
           unlockedLesson: number;
@@ -46,18 +60,22 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
         setUnlockedLesson(parsed.unlockedLesson ?? 1);
         setBestScore(parsed.bestScore ?? 0);
       } catch {
-        localStorage.removeItem(LEARNING_STORAGE_KEY);
+        // Ignore invalid or unavailable browser storage.
+      } finally {
+        setRestored(true);
       }
     }, 0);
     return () => window.clearTimeout(restoreProgress);
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
-    localStorage.setItem(
-      LEARNING_STORAGE_KEY,
-      JSON.stringify({ completedLessons, unlockedLesson, bestScore }),
-    );
-  }, [bestScore, completedLessons, unlockedLesson]);
+    if (!restored) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ completedLessons, unlockedLesson, bestScore }));
+    } catch {
+      // Cloud sync is available when browser storage is disabled.
+    }
+  }, [bestScore, completedLessons, restored, storageKey, unlockedLesson]);
 
   const syncNow = useCallback(async () => {
     if (!isAuthenticated) {
@@ -126,7 +144,7 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
         }
       },
     }),
-    [bestScore, completedLessons, isAuthenticated, lastSyncedAt, syncNow, syncState, unlockedLesson, view],
+    [bestScore, completedLessons, isAuthenticated, lastSyncedAt, setView, syncNow, syncState, unlockedLesson, view],
   );
 
   return <LearningContext.Provider value={value}>{children}</LearningContext.Provider>;

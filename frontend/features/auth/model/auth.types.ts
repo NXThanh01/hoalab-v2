@@ -7,6 +7,7 @@ export type AuthUser = {
   fullName: string | null;
   role: UserRole;
   gradeLevel: number;
+  mustChangePassword: boolean;
 };
 
 export type UserProfile = AuthUser;

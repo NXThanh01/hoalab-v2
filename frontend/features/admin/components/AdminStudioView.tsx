@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, BarChart3, BookOpenCheck, CheckCircle2, CircleGauge, CloudUpload, DatabaseZap, FileQuestion, GraduationCap, LayoutDashboard, LoaderCircle, Plus, RefreshCw, Rocket, ShieldAlert, ShieldCheck, Sparkles, Users, Video } from "lucide-react";
 import { useAuth } from "@/frontend/features/auth/model/AuthContext";
@@ -10,8 +10,9 @@ import { ExamManager } from "./ExamManager";
 import { QuestionManager } from "./QuestionManager";
 import { LessonContentManager } from "./LessonContentManager";
 import { ExamLibraryManager } from "./ExamLibraryManager";
+import { UserManager } from "./UserManager";
 
-type AdminTab = "overview" | "lessons" | "questions" | "exams" | "attempts" | "import";
+type AdminTab = "overview" | "lessons" | "questions" | "exams" | "attempts" | "import" | "users";
 const tabs = [
   { id: "overview" as const, label: "Tổng quan", icon: LayoutDashboard },
   { id: "lessons" as const, label: "Bài giảng video", icon: Video },
@@ -19,6 +20,7 @@ const tabs = [
   { id: "exams" as const, label: "Kỳ thi", icon: GraduationCap },
   { id: "attempts" as const, label: "Lượt thi", icon: BarChart3 },
   { id: "import" as const, label: "Kho đề", icon: CloudUpload },
+  { id: "users" as const, label: "Quản lý người dùng", icon: Users },
 ];
 
 function formatTime(value: string | null) {
@@ -28,8 +30,24 @@ function formatTime(value: string | null) {
 export function AdminStudioView() {
   const { isAdmin, loading } = useAuth();
   const studio = useAdminStudio();
-  const [tab, setTab] = useState<AdminTab>("overview");
+  const [tab, setActiveTab] = useState<AdminTab>("overview");
   const [seedNotice, setSeedNotice] = useState("");
+
+  useEffect(() => {
+    const restore = window.setTimeout(() => {
+      const requested = new URLSearchParams(window.location.search).get("adminTab");
+      setActiveTab(tabs.find((item) => item.id === requested)?.id ?? "overview");
+    }, 0);
+    return () => window.clearTimeout(restore);
+  }, []);
+
+  function setTab(next: AdminTab) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("view");
+    url.searchParams.set("adminTab", next);
+    window.history.replaceState(null, "", url);
+    setActiveTab(next);
+  }
 
   async function seedGrade12() {
     setSeedNotice("");
@@ -46,8 +64,8 @@ export function AdminStudioView() {
   return <main className="min-h-[calc(100vh-72px)] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
     <section className="relative overflow-hidden rounded-[28px] bg-[#111827] px-6 py-7 text-white shadow-2xl shadow-slate-300/40 sm:px-8"><div className="absolute -right-10 -top-24 h-64 w-64 rounded-full bg-indigo-500/30 blur-3xl" /><div className="absolute bottom-0 right-1/3 h-24 w-48 rounded-full bg-cyan-400/10 blur-2xl" /><div className="relative flex flex-col justify-between gap-6 xl:flex-row xl:items-end"><div><div className="mb-4 flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.2em] text-indigo-300"><ShieldCheck className="h-4 w-4" /> HóaLab Admin Studio</div><h1 className="max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">Điều hành nội dung, kỳ thi và kết quả học tập</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Soạn ngân hàng câu hỏi, xuất bản đề, theo dõi điểm và tín hiệu rời màn hình từ một bảng điều khiển.</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" disabled={studio.mutating} onClick={() => void seedGrade12()} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-indigo-700 shadow-lg disabled:opacity-60">{studio.mutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <DatabaseZap className="h-4 w-4" />} Nạp demo Hóa 12</button><div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur"><span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400" /></span><div><p className="text-xs font-bold">Đồng bộ thời gian thực</p><p className="text-[11px] text-slate-400">Lúc {formatTime(studio.lastSyncedAt)}</p></div><button type="button" onClick={() => void studio.refresh(true)} className="ml-2 grid h-8 w-8 place-items-center rounded-lg bg-white/10" aria-label="Làm mới"><RefreshCw className="h-4 w-4" /></button></div></div></div></section>
     {seedNotice && <div className="mt-4 flex items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700"><CheckCircle2 className="h-4 w-4" />{seedNotice}</div>}
-    <nav className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">{tabs.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${tab === item.id ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}><Icon className="h-4 w-4" />{item.label}</button>; })}</nav>
-    <AnimatePresence mode="wait"><motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="mt-6">{tab === "overview" && <Overview studio={studio} onNavigate={setTab} />}{tab === "lessons" && <LessonContentManager studio={studio} />}{tab === "questions" && <QuestionManager studio={studio} />}{tab === "exams" && <ExamManager studio={studio} />}{tab === "attempts" && <AttemptMonitor studio={studio} />}{tab === "import" && <ExamLibraryManager studio={studio} openExamBuilder={() => setTab("exams")} />}</motion.div></AnimatePresence>
+    <nav className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">{tabs.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} aria-current={tab === item.id ? "page" : undefined} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${tab === item.id ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}><Icon className="h-4 w-4" />{item.label}</button>; })}</nav>
+    <AnimatePresence mode="wait"><motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="mt-6">{tab === "users" && <UserManager />}{tab === "overview" && <Overview studio={studio} onNavigate={setTab} />}{tab === "lessons" && <LessonContentManager studio={studio} />}{tab === "questions" && <QuestionManager studio={studio} />}{tab === "exams" && <ExamManager studio={studio} />}{tab === "attempts" && <AttemptMonitor studio={studio} />}{tab === "import" && <ExamLibraryManager studio={studio} openExamBuilder={() => setTab("exams")} />}</motion.div></AnimatePresence>
   </main>;
 }
 

@@ -33,6 +33,7 @@ function mockGrade(answer: string, maxScore: number) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!await getSessionUser()) return Response.json({ error: "Hãy đăng nhập để nộp bài." }, { status: 401 });
   const body = (await request.json()) as GradePayload;
   const answer = body.answer?.trim() ?? "";
   const maxScore = body.maxScore ?? 4;
@@ -109,3 +110,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(mockGrade(answer, maxScore));
   }
 }
+import { getSessionUser } from "@/backend/modules/auth/session";

@@ -1,4 +1,4 @@
-import { doublePrecision, integer, pgTable, primaryKey, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, pgEnum, pgTable, primaryKey, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 const createdAt = () => timestamp("created_at", { mode: "string", withTimezone: true }).notNull().defaultNow();
 const updatedAt = () => timestamp("updated_at", { mode: "string", withTimezone: true }).notNull().defaultNow();
@@ -12,6 +12,36 @@ export const profiles = pgTable("profiles", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+export const userRole = pgEnum("account_role", ["admin", "user"]);
+export const userStatus = pgEnum("account_status", ["active", "suspended"]);
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: text("profile_id").notNull().unique().references(() => profiles.userId, { onDelete: "cascade" }),
+  loginId: text("login_id").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: userRole("role").notNull().default("user"),
+  status: userStatus("status").notNull().default("active"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  temporaryPasswordExpiresAt: timestamp("temporary_password_expires_at", { mode: "string", withTimezone: true }),
+  lastLoginAt: timestamp("last_login_at", { mode: "string", withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+export const authSessions = pgTable("auth_sessions", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rememberMe: boolean("remember_me").notNull(),
+  expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+}, (table) => [index("auth_sessions_user_idx").on(table.userId), index("auth_sessions_expiry_idx").on(table.expiresAt)]);
+
+export const loginLimits = pgTable("auth_login_limits", {
+  key: text("key").primaryKey(),
+  attempts: integer("attempts").notNull(),
+  expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true }).notNull(),
+}, (table) => [index("auth_login_limits_expiry_idx").on(table.expiresAt)]);
 
 export const learningProgress = pgTable("learning_progress", {
   userId: text("user_id").notNull().references(() => profiles.userId, { onDelete: "cascade" }),

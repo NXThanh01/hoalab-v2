@@ -26,6 +26,7 @@ function mockAnswer(question: string, mode: ChatBody["mode"]) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!await getSessionUser()) return Response.json({ error: "Hãy đăng nhập để dùng trợ lý Hóa học." }, { status: 401 });
   const body = (await request.json()) as ChatBody;
   const messages = body.messages ?? [];
   const question = [...messages].reverse().find((message) => message.role === "user")?.content?.trim();
@@ -55,3 +56,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ answer: mockAnswer(question, body.mode), model: "mock" });
   }
 }
+import { getSessionUser } from "@/backend/modules/auth/session";

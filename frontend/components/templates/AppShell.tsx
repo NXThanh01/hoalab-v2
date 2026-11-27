@@ -9,14 +9,9 @@ import { useLearning } from "@/frontend/features/learning/model/LearningContext"
 import { AITutorView } from "@/frontend/features/ai/components/AITutorView";
 import { ChemistryToolsView } from "@/frontend/features/tools/components/ChemistryToolsView";
 import { CourseCatalogView, PracticeHubView, VirtualLabView } from "@/frontend/features/hubs/components/FeatureHubViews";
-import { AdminPortalShell } from "@/frontend/features/admin/components/AdminPortalShell";
-import { useAuth } from "@/frontend/features/auth/model/AuthContext";
 
 export function AppShell() {
   const { view } = useLearning();
-  const { isAdmin } = useAuth();
-
-  if (isAdmin) return <AdminPortalShell />;
 
   const screens = {
     dashboard: <DashboardView />,

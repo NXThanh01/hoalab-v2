@@ -8,6 +8,13 @@
       "when": 1795515561542,
       "tag": "0000_pretty_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795744851252,
+      "tag": "0001_auth_accounts",
+      "breakpoints": true
     }
   ]
 }

@@ -15,11 +15,10 @@ export async function ensureProfile(user: AuthUser) {
       role: user.role,
       gradeLevel: user.gradeLevel,
     }).onConflictDoNothing();
-  } else if (existing.email !== user.email || existing.fullName !== user.fullName || existing.role !== user.role || existing.gradeLevel !== user.gradeLevel) {
+  } else if (existing.email !== user.email || existing.fullName !== user.fullName || existing.gradeLevel !== user.gradeLevel) {
     await db.update(profiles).set({
       email: user.email,
       fullName: user.fullName,
-      role: user.role,
       gradeLevel: user.gradeLevel,
       updatedAt: new Date().toISOString(),
     }).where(eq(profiles.userId, user.userId));
@@ -33,8 +32,9 @@ export async function ensureProfile(user: AuthUser) {
     email: profile.email,
     fullName: profile.fullName,
     displayName: profile.fullName ?? profile.email.split("@")[0],
-    role: profile.role,
+    role: user.role,
     gradeLevel: profile.gradeLevel,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 
